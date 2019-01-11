@@ -13,6 +13,9 @@ public:
 
 	float driveValue;
 
+	float gain;
+	int delayTime;
+
 	bool useCleanDistort;
 
     //==============================================================================
@@ -56,7 +59,22 @@ public:
 	void performSloppyDistortion(float* channelData);
 	void delayAttempt(float* channelData);
 
+	void fillDelayBuffer(int channel, int bufferLength, int delayBufferLength, const float* bufferData, const float* delayBufferData);
+	void getFromDelayBuffer(AudioBuffer<float>& buffer, int channel, const int bufferLength, const int delayBufferLength,
+		const float* bufferData, const float* delayBufferData);
+	void feedBackDelay(int channel, const int bufferLength, const int delayBufferLength, float* dryBuffer);
+
 private:
+
+	//the delayBuffer is necessary to store a copy of the original audio buffer for playback at a later time
+	//to obtain a delayed effect
+	AudioBuffer<float> delayBuffer;
+
+	//the writePosition will be used to keep track of where to write in the delayBuffer
+	int mWritePosition{ 0 };
+
+	//the sampleRate of the project is needed for delay calculations
+	int mSampleRate{ 44100 };
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AttemptAtVstAudioProcessor)

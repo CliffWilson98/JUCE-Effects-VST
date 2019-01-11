@@ -15,7 +15,7 @@
 #include "Delay.h"
 
 //TODO make it where the number of input channels is not hardcoded
-Delay* testDelay;
+//Delay* testDelay;
 
 //==============================================================================
 AttemptAtVstAudioProcessor::AttemptAtVstAudioProcessor()
@@ -32,6 +32,9 @@ AttemptAtVstAudioProcessor::AttemptAtVstAudioProcessor()
 {
 	driveValue = 1.f;
 	useCleanDistort = true;
+
+	gain = .3;
+	delayTime = 500;
 }
 
 AttemptAtVstAudioProcessor::~AttemptAtVstAudioProcessor()
@@ -105,15 +108,15 @@ void AttemptAtVstAudioProcessor::prepareToPlay (double sampleRate, int samplesPe
 {
 	//use this to update the delay buffer
 	const int inputChannels = getTotalNumInputChannels();
+	const int bufferSize =  2 * (sampleRate + samplesPerBlock);
+	mSampleRate = sampleRate;
 
-	//DBG("Sample Rate: " << sampleRate);
-	if (testDelay == nullptr)
+	delayBuffer.setSize(inputChannels, bufferSize);
+	/*if (testDelay == nullptr)
 	{
 		testDelay = new Delay(inputChannels, sampleRate);
-	}
-
-	//this allows for approximately 1.5 seconds of audio storage with a sample rate of 44.1khz
-	//const int bufferSize = 661500;
+	}*/
+	delayBuffer.clear();
 }
 
 void AttemptAtVstAudioProcessor::releaseResources()
@@ -152,27 +155,38 @@ void AttemptAtVstAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiB
 	const int totalNumInputChannels = getTotalNumInputChannels();
 	const int totalNumOutputChannels = getTotalNumOutputChannels();
 
+	//const int samples = buffer.getNumSamples();
+
 	for (int i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
 	{
 		buffer.clear(i, 0, buffer.getNumSamples());
 	}
 
+	const int bufferLength = buffer.getNumSamples();
+	const int delayBufferLength = delayBuffer.getNumSamples();
+
 	for (int channel = 0; channel < totalNumInputChannels; ++channel)
 	{
 		float* channelData = buffer.getWritePointer(channel);
 
-		const int samples = buffer.getNumSamples();
+		const float* bufferData = buffer.getReadPointer(channel);
+		const float* delayBufferData = delayBuffer.getReadPointer(channel);
+		float* dryBuffer = buffer.getWritePointer(channel);
 
-		testDelay->writeToBuffer(channel, channelData, samples);
+		//fillDelayBuffer(channel, bufferLength, delayBufferLength, bufferData, delayBufferData);
+		//getFromDelayBuffer(buffer, channel, bufferLength, delayBufferLength, bufferData, delayBufferData);
+		//fillDelayBuffer(channel, bufferLength, delayBufferLength, bufferData, delayBufferData);
 
-		/*for (int sample = 0; sample < buffer.getNumSamples(); sample++)
+		getFromDelayBuffer(buffer, channel, bufferLength, delayBufferLength, bufferData, delayBufferData);
+		fillDelayBuffer(channel, bufferLength, delayBufferLength, bufferData, delayBufferData);
+		
+		//feedBackDelay(channel, bufferLength, delayBufferLength, dryBuffer);
+		
+		//testDelay->writeToBuffer(channel, samples, channelData);
+		//testDelay->readFromBuffer(buffer, channel, samples);
+
+		for (int sample = 0; sample < buffer.getNumSamples(); sample++)
 		{
-			testDelay.writeToBuffer(*channelData);
-			if (testDelay.readFromBuffer() != 0)
-			{
-				*channelData = testDelay.readFromBuffer();
-			}
-			//*channelData = testDelay.readFromBuffer();
 			if (useCleanDistort)
 			{
 				performCleanDistortion(channelData);
@@ -181,12 +195,64 @@ void AttemptAtVstAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiB
 			{
 				performSloppyDistortion(channelData);
 			}
-			//delayAttempt(channelData);
-
-			//DBG("Test of Circular Buffer: " << delayTest.readFromBuffer());
-
 			channelData++;
-		}*/
+		}
+	}
+
+	mWritePosition += bufferLength;
+	mWritePosition %= delayBufferLength;
+
+	//testDelay->incrementBuffer(samples);
+}
+
+void AttemptAtVstAudioProcessor::fillDelayBuffer(int channel, const int bufferLength, const int delayBufferLength, const float* bufferData, const float* delayBufferData)
+{
+	if (delayBufferLength > bufferLength + mWritePosition)
+	{
+		delayBuffer.copyFromWithRamp(channel, mWritePosition, bufferData, bufferLength, gain, gain);
+	}
+	else
+	{
+		int bufferRemaining = delayBufferLength - mWritePosition;
+		delayBuffer.copyFromWithRamp(channel, mWritePosition, bufferData, bufferRemaining, gain, gain);
+		//delayBuffer.copyFromWithRamp(channel, 0, bufferData + bufferRemaining, bufferLength - bufferRemaining, gain, gain);
+		delayBuffer.copyFromWithRamp(channel, 0, bufferData, bufferLength - bufferRemaining, gain, gain);
+	}
+}
+
+void AttemptAtVstAudioProcessor::getFromDelayBuffer(AudioBuffer<float>& buffer, int channel, const int bufferLength, const int delayBufferLength,
+	const float* bufferData, const float* delayBufferData)
+{
+	DBG("Delay time = " << delayTime);
+	const int readPosition = static_cast<int>(delayBufferLength + mWritePosition - (mSampleRate * delayTime / 1000)) % delayBufferLength;
+
+	//originally addFrom
+	if (delayBufferLength > bufferLength + readPosition)
+	{
+		buffer.addFrom(channel, 0, delayBufferData + readPosition, bufferLength);
+	}
+	else
+	{
+		const int bufferRemaining = delayBufferLength - readPosition;
+		buffer.addFrom(channel, 0, delayBufferData + readPosition, bufferRemaining);
+		buffer.addFrom(channel, bufferRemaining, delayBufferData, bufferLength - bufferRemaining);
+	}
+}
+
+void AttemptAtVstAudioProcessor::feedBackDelay(int channel, const int bufferLength, const int delayBufferLength, float* dryBuffer)
+{
+	if (delayBufferLength > bufferLength + mWritePosition)
+	{
+		delayBuffer.addFromWithRamp(channel, mWritePosition, dryBuffer, bufferLength, 0.8, 0.8);
+	}
+	else
+	{
+		const int bufferRemaining = delayBufferLength - mWritePosition;
+		//maybe mWritePosition needs to be changed?
+		//mWritePosition seems to be right but in the vid he uses something different 
+		delayBuffer.addFromWithRamp(channel, mWritePosition, dryBuffer, bufferRemaining, 0.8, 0.8);
+		//delayBuffer.addFromWithRamp(channel, bufferRemaining, dryBuffer, bufferRemaining, 0.8, 0.8);
+		delayBuffer.addFromWithRamp(channel, 0, dryBuffer, bufferLength - bufferRemaining, 0.8, 0.8);
 	}
 }
 
@@ -195,6 +261,8 @@ void AttemptAtVstAudioProcessor::performCleanDistortion(float* channelData)
 	*channelData *= driveValue;
 
 	*channelData = (2.f / float_Pi) * atan(*channelData);
+	//formula for phase shift 
+	//*channelData = sin(*channelData + 22);
 }
 
 

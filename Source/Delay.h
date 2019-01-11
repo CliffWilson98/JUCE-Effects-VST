@@ -15,13 +15,14 @@ class Delay
 public:
 	
 	//void incrementBuffer();
-	void incrementBuffer(int numberToIncrement);
+	void incrementBuffer(int numberToIncrementBy);
 
 	//float readFromBuffer();
-	void readFromBuffer(AudioBuffer<float>& buffer, int destinationChannel, const float* source, int numSamples);
+	void readFromBuffer(AudioBuffer<float>& buffer, int destinationChannel, int numSamples);
 
 	//void writeToBuffer(float sampleValue);
-	void writeToBuffer(int destinationChannel, const float* source, int numSamples);
+	//void writeToBuffer(int destinationChannel, const float* source, int numSamples);
+	void writeToBuffer(int destinationChannel, int bufferLength, const float* bufferData);
 
 	Delay(int numberOfInputChannels, int sampleRate);
 	~Delay();
@@ -29,6 +30,7 @@ public:
 private:
 
 	//AudioBuff circularBuffer[66150];
+	
 	AudioBuffer<float> circularBuffer;
 
 	int bufferPosition;

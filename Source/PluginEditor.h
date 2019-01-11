@@ -39,9 +39,11 @@ private:
 
 	Slider driveKnob;
 
+	Slider delayTimeKnob;
+	Slider delayVolumeKnob;
+
 	ToggleButton cleanButton{ "Clean" };
 	ToggleButton sloppyButton{ "Sloppy" };
-	ToggleButton alternativeButton{ "Alternative" };
 
 	enum RadioButtonIDs
 	{
