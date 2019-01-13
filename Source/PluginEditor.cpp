@@ -34,11 +34,27 @@ AttemptAtVstAudioProcessorEditor::AttemptAtVstAudioProcessorEditor (AttemptAtVst
 	addAndMakeVisible(cleanButton);
 	cleanButton.onClick = [this] {toggleButtonManager(&cleanButton); };
 	cleanButton.setRadioGroupId(GenderButtons);
-	cleanButton.setToggleState(true, false);
 
 	addAndMakeVisible(sloppyButton);
 	sloppyButton.onClick = [this] {toggleButtonManager(&sloppyButton); };
 	sloppyButton.setRadioGroupId(GenderButtons);
+
+	if (processor.useCleanDistort)
+	{
+		cleanButton.setToggleState(true, false);
+	}
+	else
+	{
+		sloppyButton.setToggleState(true, false);
+	}
+
+	addAndMakeVisible(delayButton);
+	delayButton.onClick = [this] {toggleButtonManager(&delayButton); };
+	if (processor.delayOn)
+	{
+		delayButton.setToggleState(true, false);
+	}
+
 
 }
 
@@ -56,6 +72,10 @@ void AttemptAtVstAudioProcessorEditor::toggleButtonManager(ToggleButton* button)
 	{
 		processor.useCleanDistort = false;
 	}
+	else if (button == &delayButton)
+	{
+		processor.delayOn = !(processor.delayOn);
+	}
 }
 
 //==============================================================================
@@ -64,9 +84,12 @@ void AttemptAtVstAudioProcessorEditor::paint (Graphics& g)
     g.fillAll (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));
 
     g.setColour (Colours::white);
-    g.setFont (30.0f);
+    g.setFont (24.0f);
+	g.drawText("Distortion", 50, 0, 100, 50, Justification::centred, true);
 	g.drawText("Drive", 50, 100, 100, 100, Justification::centred, true);
-	g.drawText("Delay", 250, 100, 100, 100, Justification::centred, true);
+
+	g.drawText("Delay", 300, 0, 100, 50, Justification::centred, true);
+	g.drawText("Time", 250, 100, 100, 100, Justification::centred, true);
 	g.drawText("Volume", 350, 100, 100, 100, Justification::centred, true);
 }
 
@@ -74,12 +97,15 @@ void AttemptAtVstAudioProcessorEditor::resized()
 {
 	driveKnob.setBounds(50, 50, 100, 100);
 
-	cleanButton.setBounds(150, 50, 100, 25);
-	sloppyButton.setBounds(150, 75, 100, 25);
+	cleanButton.setBounds(25, 150, 100, 50);
+	sloppyButton.setBounds(125, 150, 100, 50);
+
 
 	delayTimeKnob.setBounds(250, 50, 100, 100);
 
 	delayVolumeKnob.setBounds(350, 50, 100, 100);
+
+	delayButton.setBounds(400, 13, 100, 25);
 }
 
 

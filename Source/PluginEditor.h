@@ -45,6 +45,8 @@ private:
 	ToggleButton cleanButton{ "Clean" };
 	ToggleButton sloppyButton{ "Sloppy" };
 
+	ToggleButton delayButton{ "On/Off" };
+
 	enum RadioButtonIDs
 	{
 		GenderButtons = 1001

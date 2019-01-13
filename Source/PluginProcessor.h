@@ -13,8 +13,11 @@ public:
 
 	float driveValue;
 
+	bool delayOn{ false };
 	float gain;
 	int delayTime;
+
+	int bitCrushValue{ 64 };
 
 	bool useCleanDistort;
 
@@ -63,6 +66,8 @@ public:
 	void getFromDelayBuffer(AudioBuffer<float>& buffer, int channel, const int bufferLength, const int delayBufferLength,
 		const float* bufferData, const float* delayBufferData);
 	void feedBackDelay(int channel, const int bufferLength, const int delayBufferLength, float* dryBuffer);
+
+	void bitCrush(float* channelData);
 
 private:
 

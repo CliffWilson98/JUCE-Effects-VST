@@ -5,8 +5,6 @@
               id="SXACux">
   <MAINGROUP id="Mp7c2X" name="AttemptAtVST">
     <GROUP id="{4D4DC42D-30A5-F602-48E2-21D6EE376C16}" name="Source">
-      <FILE id="vn4oKZ" name="Delay.cpp" compile="1" resource="0" file="Source/Delay.cpp"/>
-      <FILE id="Ems3xz" name="Delay.h" compile="0" resource="0" file="Source/Delay.h"/>
       <FILE id="knE1rd" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="I6G0NG" name="PluginProcessor.h" compile="0" resource="0"

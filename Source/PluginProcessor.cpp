@@ -12,7 +12,6 @@
 #include "PluginEditor.h"
 
 //test 
-#include "Delay.h"
 
 //TODO make it where the number of input channels is not hardcoded
 //Delay* testDelay;
@@ -173,18 +172,14 @@ void AttemptAtVstAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiB
 		const float* delayBufferData = delayBuffer.getReadPointer(channel);
 		float* dryBuffer = buffer.getWritePointer(channel);
 
-		//fillDelayBuffer(channel, bufferLength, delayBufferLength, bufferData, delayBufferData);
-		//getFromDelayBuffer(buffer, channel, bufferLength, delayBufferLength, bufferData, delayBufferData);
-		//fillDelayBuffer(channel, bufferLength, delayBufferLength, bufferData, delayBufferData);
-
-		getFromDelayBuffer(buffer, channel, bufferLength, delayBufferLength, bufferData, delayBufferData);
-		fillDelayBuffer(channel, bufferLength, delayBufferLength, bufferData, delayBufferData);
+		if(delayOn)
+		{
+			getFromDelayBuffer(buffer, channel, bufferLength, delayBufferLength, bufferData, delayBufferData);
+			fillDelayBuffer(channel, bufferLength, delayBufferLength, bufferData, delayBufferData);
+		}
 		
-		//feedBackDelay(channel, bufferLength, delayBufferLength, dryBuffer);
-		
-		//testDelay->writeToBuffer(channel, samples, channelData);
-		//testDelay->readFromBuffer(buffer, channel, samples);
-
+		//The distortion must occur after the delay or else an initially distorted signal will remained distorted 
+		//during the delay even after the distortion is turned all the way down.
 		for (int sample = 0; sample < buffer.getNumSamples(); sample++)
 		{
 			if (useCleanDistort)
@@ -195,14 +190,15 @@ void AttemptAtVstAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiB
 			{
 				performSloppyDistortion(channelData);
 			}
+
+			//bitCrush(channelData);
+
 			channelData++;
 		}
 	}
 
 	mWritePosition += bufferLength;
 	mWritePosition %= delayBufferLength;
-
-	//testDelay->incrementBuffer(samples);
 }
 
 void AttemptAtVstAudioProcessor::fillDelayBuffer(int channel, const int bufferLength, const int delayBufferLength, const float* bufferData, const float* delayBufferData)
@@ -215,7 +211,6 @@ void AttemptAtVstAudioProcessor::fillDelayBuffer(int channel, const int bufferLe
 	{
 		int bufferRemaining = delayBufferLength - mWritePosition;
 		delayBuffer.copyFromWithRamp(channel, mWritePosition, bufferData, bufferRemaining, gain, gain);
-		//delayBuffer.copyFromWithRamp(channel, 0, bufferData + bufferRemaining, bufferLength - bufferRemaining, gain, gain);
 		delayBuffer.copyFromWithRamp(channel, 0, bufferData, bufferLength - bufferRemaining, gain, gain);
 	}
 }
@@ -223,7 +218,6 @@ void AttemptAtVstAudioProcessor::fillDelayBuffer(int channel, const int bufferLe
 void AttemptAtVstAudioProcessor::getFromDelayBuffer(AudioBuffer<float>& buffer, int channel, const int bufferLength, const int delayBufferLength,
 	const float* bufferData, const float* delayBufferData)
 {
-	DBG("Delay time = " << delayTime);
 	const int readPosition = static_cast<int>(delayBufferLength + mWritePosition - (mSampleRate * delayTime / 1000)) % delayBufferLength;
 
 	//originally addFrom
@@ -236,23 +230,6 @@ void AttemptAtVstAudioProcessor::getFromDelayBuffer(AudioBuffer<float>& buffer, 
 		const int bufferRemaining = delayBufferLength - readPosition;
 		buffer.addFrom(channel, 0, delayBufferData + readPosition, bufferRemaining);
 		buffer.addFrom(channel, bufferRemaining, delayBufferData, bufferLength - bufferRemaining);
-	}
-}
-
-void AttemptAtVstAudioProcessor::feedBackDelay(int channel, const int bufferLength, const int delayBufferLength, float* dryBuffer)
-{
-	if (delayBufferLength > bufferLength + mWritePosition)
-	{
-		delayBuffer.addFromWithRamp(channel, mWritePosition, dryBuffer, bufferLength, 0.8, 0.8);
-	}
-	else
-	{
-		const int bufferRemaining = delayBufferLength - mWritePosition;
-		//maybe mWritePosition needs to be changed?
-		//mWritePosition seems to be right but in the vid he uses something different 
-		delayBuffer.addFromWithRamp(channel, mWritePosition, dryBuffer, bufferRemaining, 0.8, 0.8);
-		//delayBuffer.addFromWithRamp(channel, bufferRemaining, dryBuffer, bufferRemaining, 0.8, 0.8);
-		delayBuffer.addFromWithRamp(channel, 0, dryBuffer, bufferLength - bufferRemaining, 0.8, 0.8);
 	}
 }
 
@@ -280,17 +257,13 @@ void AttemptAtVstAudioProcessor::performSloppyDistortion(float* channelData)
 	}
 }
 
-void AttemptAtVstAudioProcessor::delayAttempt(float* channelData)
+void AttemptAtVstAudioProcessor::bitCrush(float* channelData)
 {
-	//float currentChannelData = *channelData;
-	/*if ((channelData + 3) != nullptr)
-	{
+	//DBG("initial value is: " << *channelData);
 
-	}*/
-	//*(channelData + 60000) = currentChannelData;
-	//DBG("Current Channel Data " << *channelData);
-	//DBG("Next Should Be " << *(channelData + 1));
-	//*(channelData + 1) = .30;
+	*channelData = (ceil(*channelData * bitCrushValue)) / bitCrushValue;
+
+	//DBG("final value is: " << *channelData);
 }
 
 //==============================================================================
